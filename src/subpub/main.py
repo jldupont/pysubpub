@@ -4,7 +4,7 @@
 """
 from functools import wraps
 
-__all__=["sub", "pub", "upub"]
+__all__=["sub", "pub", "upub", "get_subs"]
 
 ## The interpreter-wide context dictionary
 SUBS={}
@@ -73,7 +73,25 @@ def upub(topic, *pa):
     QUEUE.insert(0, (topic, pa))
     
     _dopub()
+
+##
+## DEBUG  ==============================================================================
+##
+
+def get_subs():
+    """
+    Returns the {topic:[subscribers]
     
+    Useful for debugging
+    
+    Useful for documenting call flows  
+    """
+    return SUBS
+
+
+##
+## PRIVATE =============================================================================
+##    
     
 def _dopub():
     """
