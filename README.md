@@ -42,6 +42,10 @@ The example above would yield:
     "module2/topic1: value1"
     "module1/topic2: value2"
     
+Tests
+=====
+
+`nose` can be used to run the package tests.
 
 History
 =======
