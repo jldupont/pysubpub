@@ -29,7 +29,8 @@ def sub(handler_topic):
     """
     global SUBS
     
-    try:    topic=handler_topic.__name__.split("_")[1]
+    try:    
+        topic=handler_topic.__name__.split("_")[1]
     except:
         raise Exception("Invalid topic handler function name: %s" % handler_topic)
     

@@ -142,6 +142,14 @@ class TestCases(unittest.TestCase):
         self.assertEqual(topic3, "test5")
         self.assertEqual(val3,   "value3")
         
+    def test_donotcalldirectly(self):
+        """
+        Do not call sub function directly
+        """
+        with self.assertRaises(Exception) as _context:
+            on_test1("value1")
+            
+        
      
 if __name__ == '__main__':
     unittest.main()
