@@ -2,7 +2,7 @@
     Created on 2013-03-03
     @author: jldupont
 """
-__all__=["push_event"]
+__all__=["push_event", "push_event_all"]
 
 import unittest
 
@@ -13,11 +13,21 @@ base=dn(dn(dn(ap)))
 sys.path.insert(0, base)
 from subpub import sub, pub, upub, get_subs
 
+EVENTS=[]
+EVENTS_ALL=[]
 
+def reset_event_all():
+    global EVENTS_ALL
+    EVENTS_ALL=[]
 
 def push_event(e):
     global EVENTS
     EVENTS.append(e)
+
+def push_event_all(e):
+    global EVENTS_ALL
+    EVENTS_ALL.append(e)
+
 
 @sub
 def on_test1(param):   
@@ -59,15 +69,20 @@ def on_test5(param1):
 
     
 @sub
-def on_test6():
+def on_raise():
     raise Exception("Some exception in test6")
 
 
 @sub
 def on_test99(param):   
     global EVENTS
+    EVENTS.append(("test1/test99", param))
+
+@sub
+def on_all(topic, *p):
+    global EVENTS_ALL
+    EVENTS_ALL.append(("test1/all", (topic, p)))
     
-    EVENTS.append(("test99", param))
 
 
 class TestCases(unittest.TestCase):
@@ -75,8 +90,6 @@ class TestCases(unittest.TestCase):
     def setUp(self):
         global EVENTS
         EVENTS=[]
-    
-            
     
     def test_a1_simple(self):
         """
@@ -101,6 +114,7 @@ class TestCases(unittest.TestCase):
         """
         Two topics, 2 msgs
         """
+        global EVENTS
         
         pub("test1", "value1")
         pub("test2", "param1", "param2")
@@ -123,6 +137,7 @@ class TestCases(unittest.TestCase):
         """
         Simple urgent, 1 topics, 3msgs
         """
+        global EVENTS
         
         pub("test3", "value3")
         
@@ -140,29 +155,27 @@ class TestCases(unittest.TestCase):
         self.assertEqual(topic3, "test5")
         self.assertEqual(val3,   "value3")
         
-    def test_a4_donotcalldirectly(self):
-        """
-        Do not call sub function directly
-        """
-        with self.assertRaises(Exception) as _context:
-            on_test1("value1")
             
-    def test_z1_2modules(self):
+        
+            
+    def test_a4_2modules(self):
         """
         Simple 2 modules, 1 msg
         """
+        global EVENTS
         import test2
         
-        pub("test99", "value1")
+        pub("test99", "a4")
+
         self.assertEqual(len(EVENTS), 2)
         
         topic1, val1=EVENTS.pop(0)
-        self.assertEqual(topic1, "test99")
-        self.assertEqual(val1,   "value1")
+        self.assertEqual(topic1.split("/")[1], "test99")
+        self.assertEqual(val1,   "a4")
         
         topic2, val2=EVENTS.pop(0)
-        self.assertEqual(topic2, "test2/test99")
-        self.assertEqual(val2,   "value1")
+        self.assertEqual(topic2.split("/")[1], "test99")
+        self.assertEqual(val2,   "a4")
 
             
     def test_z2_get_subs(self):
@@ -174,18 +187,79 @@ class TestCases(unittest.TestCase):
 
         for topic in subs:
             liste=subs[topic]
-            for sub in liste:
+            for _type, sub in liste:
                 print "sub: mod=", sub.__module__,", fnc=",sub.__name__
 
-    ## need to put this test towards the end (hence the 'x')
+    def test_z3_toall(self):
+        """
+        Subscribe to all
+        """
+        global EVENTS_ALL
+        
+        #print
+        #print "begin: ", EVENTS_ALL
+        
+        import test3
+        
+        reset_event_all()
+        
+        pub("test99", "value_all")
+        
+        #print
+        #print "end: ",EVENTS_ALL
+                
+        self.assertEqual(len(EVENTS_ALL), 2)
+        
+        context, msg=EVENTS_ALL.pop(0)
+        topic, params=msg
+        
+        ctx_bits=context.split("/")
+        ## test*  all
+        is_test1=ctx_bits[0]=="test1"
+        is_test3=ctx_bits[0]=="test3"
+        
+        self.assertEqual(is_test1, not is_test3)
+        
+        self.assertEqual(ctx_bits[1], "all")
+        self.assertEqual(topic, "test99")
+        self.assertEqual(params[0], "value_all")
+
+        #
+        #
+        #
+                
+        context, msg=EVENTS_ALL.pop(0)
+        topic, params=msg
+        
+        ctx_bits=context.split("/")
+        ## test*  all
+        is_test1=ctx_bits[0]=="test1"
+        is_test3=ctx_bits[0]=="test3"
+        
+        self.assertEqual(is_test1, not is_test3)
+        
+        self.assertEqual(ctx_bits[1], "all")
+        self.assertEqual(topic, "test99")
+        self.assertEqual(params[0], "value_all")
+        
+        
+
+    ## need to put this test towards the end (hence the 'z')
     ## If not, the rest of the tests fail...
-    def test_z3_raise(self):
+    def test_za_raise(self):
         """
         Raise an exception
         """
         with self.assertRaises(Exception) as _context:
-            pub("test6")
+            pub("raise")
+
         
+    def test_zb_donotcalldirectly(self):
+        """
+        Do not call sub function directly
+        """
+        with self.assertRaises(Exception) as _context:
+            on_test1("do_not_call_directly")
      
 if __name__ == '__main__':
     unittest.main()

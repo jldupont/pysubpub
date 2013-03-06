@@ -4,10 +4,11 @@
 """
 from functools import wraps
 
-__all__=["sub", "pub", "upub", "get_subs"]
+__all__=["sub", "pub", "upub", "get_subs", "get_queue"]
 
 ## The interpreter-wide context dictionary
 SUBS={}
+SUB_ALL=[]
 
 ## The interpreter-wide queue
 QUEUE=[]
@@ -26,8 +27,10 @@ def sub(handler_topic):
     
         'on_begin'  ==> topic name='begin'
         
+    @param toall: True means that the function will get all the messages 
+        
     """
-    global SUBS
+    global SUBS, SUB_ALL
     
     try:    
         topic=handler_topic.__name__.split("_")[1]
@@ -38,10 +41,21 @@ def sub(handler_topic):
     def message_receiver(*pa):
         return handler_topic(*pa)
 
-    lsubs=SUBS.get(topic, [])
-    lsubs.append(message_receiver)
-    SUBS[topic]=lsubs
-    
+    #is_new_topic=topic in SUBS
+
+    if topic=="all":
+        SUB_ALL.append(("a", message_receiver))
+    else:
+        lsubs=SUBS.get(topic, set())
+        lsubs.update([("n", message_receiver)])
+        SUBS[topic]=lsubs
+            
+    ### add this subscriber to all topics
+    ###  and make sure to adjust the subscribers list
+    ###  based on new topics introduced
+    for lsubs in SUBS.itervalues():
+        lsubs.update(SUB_ALL)
+            
     def do_not_call_directly(*p, **k):
         raise Exception("Do not call a 'topic subscriber' function directly: %s" % handler_topic.__name__)
     
@@ -88,6 +102,13 @@ def get_subs():
     """
     return SUBS
 
+def get_queue():
+    """
+    Returns the message queue list
+    
+    Useful for debugging
+    """
+    return QUEUE
 
 ##
 ## PRIVATE =============================================================================
@@ -97,7 +118,7 @@ def _dopub():
     """
     Actually performs the publishing
     """
-    global INPROC, QUEUE, SUBS
+    global INPROC, QUEUE, SUBS, SUB_ALL
     
     if INPROC:
         return
@@ -110,8 +131,11 @@ def _dopub():
         
         topic, params=msg
         
-        lsubs=SUBS.get(topic, [])
-        for sub in lsubs:
-            sub(*params)
-        
+        lsubs=SUBS.get(topic, set())
+        for _type, sub in lsubs:
+            if _type=="n":
+                sub(*params)
+            else:
+                sub(topic, *params)
+         
     INPROC=False
