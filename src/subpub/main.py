@@ -4,9 +4,10 @@
 """
 from functools import wraps
 
-__all__=["sub", "pub", "upub", "get_subs", "get_queue"]
+__all__=["sub", "pub", "upub", "get_subs", "get_queue", "clear_all_subs"]
 
-## The interpreter-wide context dictionary
+
+## The interpreter-wide context dictionaries
 SUBS={}
 SUB_ALL=[]
 
@@ -75,7 +76,6 @@ def pub(topic, *pa):
     _dopub()
     
     
-    
 def upub(topic, *pa):
     """
     Urgent publish function
@@ -94,21 +94,35 @@ def upub(topic, *pa):
 
 def get_subs():
     """
-    Returns the {topic:[subscribers]
+    Returns a copy of the {topic:[subscribers]} data
     
     Useful for debugging
     
     Useful for documenting call flows  
     """
-    return SUBS
+    return dict(SUBS)
+
 
 def get_queue():
     """
-    Returns the message queue list
+    Returns a copy of the message queue list
     
     Useful for debugging
     """
-    return QUEUE
+    return list(QUEUE)
+
+
+def clear_all_subs():
+    """
+    Clear all handlers on topics
+    
+    Useful for nose tests
+    """
+    global SUBS, SUB_ALL
+    
+    SUBS={}
+    SUB_ALL=[]
+    
 
 ##
 ## PRIVATE =============================================================================
@@ -130,12 +144,16 @@ def _dopub():
         except: break
         
         topic, params=msg
-        
+
         lsubs=SUBS.get(topic, set())
-        for _type, sub in lsubs:
-            if _type=="n":
-                sub(*params)
-            else:
-                sub(topic, *params)
+        try:
+            for _type, sub in lsubs:
+                if _type=="n":
+                    sub(*params)
+                else:
+                    sub(topic, *params)
+        except:
+            INPROC=False
+            raise
          
     INPROC=False

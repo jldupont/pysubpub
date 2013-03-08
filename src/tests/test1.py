@@ -11,7 +11,7 @@ ap=os.path.abspath(__file__)
 dn=os.path.dirname
 base=dn(dn(dn(ap)))
 sys.path.insert(0, base)
-from subpub import sub, pub, upub, get_subs
+from subpub import sub, pub, upub, get_subs, clear_all_subs
 
 EVENTS=[]
 EVENTS_ALL=[]
@@ -242,8 +242,6 @@ class TestCases(unittest.TestCase):
         self.assertEqual(topic, "test99")
         self.assertEqual(params[0], "value_all")
         
-        
-
     ## need to put this test towards the end (hence the 'z')
     ## If not, the rest of the tests fail...
     def test_za_raise(self):
@@ -260,6 +258,21 @@ class TestCases(unittest.TestCase):
         """
         with self.assertRaises(Exception) as _context:
             on_test1("do_not_call_directly")
+
+    def test_zc_no_sub(self):
+        """
+        No subscribers
+        """
+        global EVENTS, EVENTS_ALL
+        
+        clear_all_subs()
+        
+        pub("notopic1")
+        pub("notopic2", "param2")
+        
+        self.assertEqual(len(EVENTS), 0)
+        self.assertEqual(len(EVENTS_ALL), 0)
+
      
 if __name__ == '__main__':
     unittest.main()
